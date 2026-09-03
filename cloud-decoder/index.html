@@ -348,6 +348,39 @@ var printSheet = document.getElementById("print-sheet");
 var selectedBase64 = null;
 var selectedMediaType = null;
 var selectedFileName = "";
+var resultAt = null;     // when the identification came back
+var photoAt = null;      // when the photo itself was taken, if recoverable
+var photoAtSrc = "";     // "camera metadata" (EXIF) or "file date"
+
+/* ---- timestamps: this is the data that was getting lost ---- */
+function p2(n) { return (n < 10 ? "0" : "") + n; }
+function stampParts(d) {
+  var iso = d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) +
+    "_T" + p2(d.getHours()) + p2(d.getMinutes());
+  var local = d.toLocaleString("en-US", { weekday: "short", year: "numeric", month: "short",
+    day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
+  var zulu = p2(d.getUTCHours()) + p2(d.getUTCMinutes()) + "Z " +
+    d.getUTCFullYear() + "-" + p2(d.getUTCMonth() + 1) + "-" + p2(d.getUTCDate());
+  return { iso: iso, local: local, zulu: zulu };
+}
+/* EXIF date-time strings are ASCII "YYYY:MM:DD HH:MM:SS" inside the JPEG header.
+   A raw scan of the first 128 KB finds them without a parser; the earliest one
+   is DateTimeOriginal or its equal. Returns a Date or null — never throws. */
+function exifDate(dataUrl) {
+  try {
+    if (dataUrl.indexOf("data:image/jpeg") !== 0) return null;
+    var b64 = dataUrl.split(",")[1] || "";
+    var bin = atob(b64.slice(0, 174764));  /* ~128 KB decoded */
+    var m = bin.match(/(19|20)\d{2}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}/g);
+    if (!m || !m.length) return null;
+    m.sort();
+    var t = m[0];
+    var d = new Date(t.slice(0, 4) + "-" + t.slice(5, 7) + "-" + t.slice(8, 10) +
+      "T" + t.slice(11));
+    if (isNaN(d.getTime()) || d.getFullYear() < 2000 || d > new Date()) return null;
+    return d;
+  } catch (e) { return null; }
+}
 var lastTypes = null;
 
 // Matches the Worker's ~5 MB image cap, checked here before wasting an upload.
@@ -409,6 +442,7 @@ function resetAll() {
   selectedBase64 = null;
   selectedMediaType = null;
   selectedFileName = "";
+  resultAt = null; photoAt = null; photoAtSrc = "";
   lastTypes = null;
   lastConfidence = {};
   lastReasoning = null;
@@ -436,9 +470,14 @@ function onPick(e) {
   lastReasoning = null;
   markTypes([]);
 
+  photoAt = file.lastModified ? new Date(file.lastModified) : null;
+  photoAtSrc = photoAt ? "file date" : "";
+
   var reader = new FileReader();
   reader.onload = function () {
     var dataUrl = reader.result;
+    var ex = exifDate(dataUrl);
+    if (ex) { photoAt = ex; photoAtSrc = "camera metadata"; }
     previewImg.src = dataUrl;
     previewFrame.hidden = false;
     if (tooBig) { selectedBase64 = null; identifyBtn.disabled = true; return; }
@@ -534,12 +573,16 @@ identifyBtn.addEventListener("click", function () {
       lastReasoning = (result.data && result.data.reasoning) || null;
       markTypes(types);
       var body = types.length === 0 ? clearCardHtml() : cloudCardsHtml(types);
+      resultAt = new Date();
       output.innerHTML =
         '<h2 class="sec-label result-head">Result</h2>' + body +
         reasoningHtml(lastReasoning, false) +
-        '<p class="pdf-row"><button id="pdf-btn" class="btn-secondary" type="button">Download PDF</button></p>';
+        '<p class="pdf-row"><button id="pdf-btn" class="btn-secondary" type="button">Download PDF</button> ' +
+        '<button id="email-btn" class="btn-secondary" type="button">Email / share&hellip;</button></p>';
       var pdfBtn = document.getElementById("pdf-btn");
       if (pdfBtn) pdfBtn.addEventListener("click", downloadPdf);
+      var emailBtn = document.getElementById("email-btn");
+      if (emailBtn) emailBtn.addEventListener("click", emailReport);
       identifyBtn.disabled = false;
     })
     .catch(function () {
@@ -551,25 +594,33 @@ identifyBtn.addEventListener("click", function () {
 // "Download PDF": fill the print-only sheet with the photo + result, then open
 // the print dialog — on iPhone/iPad tap Print then share/Save to Files as PDF;
 // on desktop choose "Save as PDF" as the destination.
+function stampLines() {
+  var t = stampParts(resultAt || new Date());
+  var lines = "Identified: " + t.local + " \u00b7 " + t.zulu;
+  if (photoAt) {
+    var pt = stampParts(photoAt);
+    lines = "Photo taken: " + pt.local + " \u00b7 " + pt.zulu + " (" + photoAtSrc + ")\n" + lines;
+  }
+  return { text: lines, iso: stampParts(resultAt || new Date()).iso };
+}
+
 function downloadPdf() {
   if (lastTypes === null) return;
-  var d = new Date();
-  var stamp = d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  var st = stampLines();
+  var stamp = st.text.split("\n").join(" &middot; ");
 
   // Suggested PDF filename: browsers take it from document.title, so set an
   // ISO-8601 local-time-stamped name during printing, then restore the real title.
   // (No Z suffix: this is the device's local time, not Zulu.)
-  function p2(n) { return (n < 10 ? "0" : "") + n; }
-  var iso = d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()) +
-    "_T" + p2(d.getHours()) + p2(d.getMinutes());
   var prevTitle = document.title;
-  document.title = "cloud-decoder_" + iso;
+  document.title = "cloud-decoder_" + st.iso;
   function restoreTitle() { document.title = prevTitle; window.removeEventListener("afterprint", restoreTitle); }
   window.addEventListener("afterprint", restoreTitle);
   setTimeout(restoreTitle, 3000);
   printSheet.innerHTML =
     '<p class="pr-brand">Cloud Decoder | PilotDECODER</p>' +
-    '<p class="pr-meta">' + escapeHtml(selectedFileName) + " &middot; " + stamp + "</p>" +
+    '<p class="pr-meta">' + escapeHtml(selectedFileName) + "</p>" +
+    '<p class="pr-meta">' + stamp + "</p>" +
     (previewImg.src ? '<img class="pr-img" src="' + previewImg.src + '" alt="Sky photo" />' : "") +
     '<h2 class="pr-head">Result</h2>' +
     (lastTypes.length === 0 ? clearCardHtml() : cloudCardsHtml(lastTypes)) +
@@ -577,6 +628,53 @@ function downloadPdf() {
     PRINT_REFS +
     '<p class="pr-foot">pilotdecoder.com/cloud-decoder &middot; Educational only. Not for operational decisions.</p>';
   window.print();
+}
+
+/* "Email / share": the report as an email you send yourself. On phones the
+   share sheet opens with the sky photo attached under a time-stamped filename
+   and the identification as text — pick Mail and it becomes the message. Where
+   file sharing is unavailable, falls back to a mailto: draft (no attachment;
+   the Download PDF button still carries the photo). Subject carries date+time. */
+function summaryText() {
+  var names = lastTypes && lastTypes.length
+    ? lastTypes.map(function (t) {
+        var c = lastConfidence[t];
+        return t + (c ? " (" + c + " confidence)" : "");
+      }).join(", ")
+    : "No cloud types identified (clear sky or none recognized)";
+  var st = stampLines();
+  return "Cloud Decoder report\n" + st.text + "\nResult: " + names +
+    "\nPhoto: " + (selectedFileName || "sky photo") +
+    "\n\npilotdecoder.com/cloud-decoder \u00b7 Educational only.";
+}
+function emailReport() {
+  if (lastTypes === null) return;
+  var st = stampLines();
+  var t = stampParts(resultAt || new Date());
+  var subject = "Cloud Decoder \u2014 " + st.iso.replace("_T", " ").replace(/(\d\d)(\d\d)$/, "$1:$2") +
+    " \u00b7 " + t.zulu.split(" ")[0];
+  var body = summaryText();
+  var shared = false;
+  try {
+    if (navigator.canShare && previewImg.src && previewImg.src.indexOf("data:") === 0) {
+      var parts = previewImg.src.split(",");
+      var mime = (parts[0].match(/data:([^;]+)/) || [null, "image/jpeg"])[1];
+      var bin = atob(parts[1]);
+      var arr = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      var ext = mime === "image/png" ? ".png" : ".jpg";
+      var photo = new File([arr], "cloud-decoder_" + st.iso + ext, { type: mime });
+      if (navigator.canShare({ files: [photo] })) {
+        shared = true;
+        navigator.share({ files: [photo], title: subject, text: body })
+          .catch(function () { /* user closed the sheet; nothing to do */ });
+      }
+    }
+  } catch (e) { shared = false; }
+  if (!shared) {
+    location.href = "mailto:?subject=" + encodeURIComponent(subject) +
+      "&body=" + encodeURIComponent(body);
+  }
 }
 
 resetBtn.addEventListener("click", resetAll);
