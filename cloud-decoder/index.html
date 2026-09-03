@@ -363,6 +363,15 @@ function stampParts(d) {
     d.getUTCFullYear() + "-" + p2(d.getUTCMonth() + 1) + "-" + p2(d.getUTCDate());
   return { iso: iso, local: local, zulu: zulu };
 }
+/* Filename segment for the identified types: alphabetical, lowercased,
+   spaces to hyphens — so cumulus+cirrus and cirrus+cumulus save under the
+   same name, and sorted folders cluster every type and combo together. */
+function typeSlug() {
+  if (!lastTypes || !lastTypes.length) return "clear";
+  return lastTypes.slice().sort().map(function (t) {
+    return t.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  }).join("-");
+}
 /* EXIF date-time strings are ASCII "YYYY:MM:DD HH:MM:SS" inside the JPEG header.
    A raw scan of the first 128 KB finds them without a parser; the earliest one
    is DateTimeOriginal or its equal. Returns a Date or null — never throws. */
@@ -613,7 +622,7 @@ function downloadPdf() {
   // ISO-8601 local-time-stamped name during printing, then restore the real title.
   // (No Z suffix: this is the device's local time, not Zulu.)
   var prevTitle = document.title;
-  document.title = "cloud-decoder_" + st.iso;
+  document.title = "cloud-decoder_" + typeSlug() + "_" + st.iso;
   function restoreTitle() { document.title = prevTitle; window.removeEventListener("afterprint", restoreTitle); }
   window.addEventListener("afterprint", restoreTitle);
   setTimeout(restoreTitle, 3000);
@@ -652,7 +661,7 @@ function emailReport() {
   var st = stampLines();
   var t = stampParts(resultAt || new Date());
   var subject = "Cloud Decoder \u2014 " + st.iso.replace("_T", " ").replace(/(\d\d)(\d\d)$/, "$1:$2") +
-    " \u00b7 " + t.zulu.split(" ")[0];
+    " \u00b7 " + t.zulu.split(" ")[0] + " \u00b7 " + typeSlug();
   var body = summaryText();
   var shared = false;
   try {
@@ -663,7 +672,7 @@ function emailReport() {
       var arr = new Uint8Array(bin.length);
       for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
       var ext = mime === "image/png" ? ".png" : ".jpg";
-      var photo = new File([arr], "cloud-decoder_" + st.iso + ext, { type: mime });
+      var photo = new File([arr], "cloud-decoder_" + typeSlug() + "_" + st.iso + ext, { type: mime });
       if (navigator.canShare({ files: [photo] })) {
         shared = true;
         navigator.share({ files: [photo], title: subject, text: body })
