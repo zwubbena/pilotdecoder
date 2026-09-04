@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en" id="top">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Knots Decoder | PilotDECODER</title>
+<meta name="description" content="Reversible knots-to-mph and nautical-to-statute-mile converters that teach as they compute: the factor, the arithmetic, a one-hour flight visualization, and dimensional analysis, built on the exact meter definitions." />
+<meta name="keywords" content="knots to mph, nautical miles to statute miles, knot conversion, 1.150779448, nautical mile 1852 meters, statute mile 1609.344 meters, aviation unit converter, groundspeed, METAR visibility, student pilot, ground school, PilotDECODER" />
+<meta name="author" content="Zane Wubbena" />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://pilotdecoder.com/knots-decoder/" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://pilotdecoder.com/knots-decoder/" />
+<meta property="og:site_name" content="PilotDECODER" />
+<meta property="og:title" content="Knots Decoder | PilotDECODER" />
+<meta property="og:description" content="Knots to mph and nautical to statute miles, taught rather than just computed." />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Knots Decoder | PilotDECODER" />
+<meta name="twitter:description" content="Knots to mph and nautical to statute miles, taught rather than just computed." />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "PilotDECODER",
+  "alternateName": "Knots Decoder",
+  "url": "https://pilotdecoder.com/knots-decoder/",
+  "description": "Reversible educational converters for knots to miles per hour and nautical to statute miles, with worked arithmetic and visualizations.",
+  "applicationCategory": "Aviation utility",
+  "operatingSystem": "Any (web browser)",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": {
+    "@type": "Person",
+    "name": "Zane Wubbena",
+    "url": "https://zanewubbena.com/",
+    "sameAs": [
+      "https://txstate.academia.edu/ZaneWubbena",
+      "https://scholar.google.com/citations?user=qr2mU1oAAAAJ&hl=en",
+      "https://www.researchgate.net/profile/Zane-Wubbena"
+    ]
+  }
+}
+</script>
+<script>try{if(localStorage.getItem("pd-home-theme")==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}</script>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='5'%20fill='%2316294f'/%3E%3Cpath%20d='M12%205%20L17%2018%20L12%2015%20L7%2018%20Z'%20fill='%23ffffff'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="../assets/site.css?v=19" />
+<style>
+  /* ============ PAGE-SPECIFIC: knots decoder ============ */
+  /* Chrome and tokens come from /assets/site.css. The converter panels are
+     dark instrument boards (like the Zulu clock) and stay dark in BOTH
+     themes; everything outside them follows the site theme. */
+  main.wrap { padding-top: 4px; padding-bottom: 44px; }
+  .sec { display: flex; align-items: center; gap: 14px; margin: 32px 0 14px; }
+  .sec .n { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--ifr); }
+  .sec h2 { font-size: 20px; margin: 0; color: var(--ink); }
+  .sec .line { flex: 1; height: 1px; background: var(--rule); }
+  .lead { font-size: 15px; color: var(--ink); max-width: 72ch; margin: 0 0 6px; }
+
+  /* pre-training: define the words before the math uses them */
+  .defs { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 14px 0 0; }
+  .def { border: 1px solid var(--rule); border-radius: 10px; background: color-mix(in srgb, var(--wash) 45%, var(--surface)); padding: 11px 13px; }
+  .def b { display: block; font-size: 13.5px; color: var(--brand); margin-bottom: 3px; }
+  .def p { margin: 0; font-size: 13px; color: var(--ink); line-height: 1.5; }
+
+  /* ---------- the instrument board ---------- */
+  .board { --bd-bg: #0d1930; --bd-ink: #e8edf7; --bd-soft: #9fb0cc; --bd-line: #24365c;
+    --c-src: #8fe0ef; --c-fac: #eec27f; --c-res: #8fd07a; --c-err: #f4a6b0;
+    background: var(--bd-bg); color: var(--bd-ink); border-radius: 12px; padding: 18px;
+    background-image: linear-gradient(var(--bd-line) 1px, transparent 1px), linear-gradient(90deg, var(--bd-line) 1px, transparent 1px);
+    background-size: 44px 44px; background-position: -1px -1px; margin: 14px 0 0; }
+  .board * { box-sizing: border-box; }
+  .b-caption { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--bd-soft); margin: 0 0 12px; }
+  .fields { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .fld { flex: 1 1 180px; min-width: 150px; }
+  .fld label { display: block; font-size: 12.5px; font-weight: 600; color: var(--bd-ink); margin-bottom: 4px; }
+  .fld label .u { font-family: var(--mono); color: var(--bd-soft); font-weight: 400; }
+  .fld input { width: 100%; min-height: 44px; font-family: var(--mono); font-size: 18px; padding: 8px 12px;
+    background: #0a1426; color: var(--c-src); border: 1px solid var(--bd-line); border-radius: 8px; }
+  .fld input:focus-visible { outline: 2px solid var(--c-src); outline-offset: 2px; }
+  .fld.dst input { color: var(--c-res); }
+  .swap { flex: 0 0 auto; }
+  .bbtn { min-height: 44px; min-width: 44px; font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--bd-ink);
+    background: #16264a; border: 1px solid var(--bd-line); border-radius: 8px; padding: 8px 14px; cursor: pointer; touch-action: manipulation; }
+  .bbtn:hover { border-color: var(--c-src); }
+  .bbtn:focus-visible { outline: 2px solid var(--c-src); outline-offset: 2px; }
+  .bbtn[aria-pressed="true"] { background: var(--c-src); color: #08111f; border-color: var(--c-src); }
+  .ctlrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0 0; }
+  .ctlrow .gap { flex: 1; }
+  .ctlrow select { min-height: 44px; font-family: var(--mono); font-size: 13px; background: #16264a; color: var(--bd-ink);
+    border: 1px solid var(--bd-line); border-radius: 8px; padding: 6px 8px; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 0; }
+  .chipbtn { min-height: 44px; font-family: var(--mono); font-size: 13px; color: var(--c-src); background: transparent;
+    border: 1px solid var(--bd-line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+  .chipbtn:hover { border-color: var(--c-src); }
+  .chipbtn:focus-visible { outline: 2px solid var(--c-src); outline-offset: 2px; }
+  .verr { margin: 10px 0 0; font-size: 13.5px; color: var(--c-err); }
+  .verr:empty { display: none; }
+
+  /* the three layers of math */
+  .mathbox { border-top: 1px solid var(--bd-line); margin-top: 14px; padding-top: 12px; }
+  .m-sym { font-family: var(--mono); font-size: 13px; color: var(--bd-soft); margin: 0 0 8px; }
+  .m-sub, .m-rnd { font-family: var(--mono); font-size: 15.5px; margin: 0 0 4px; overflow-x: auto; white-space: nowrap; }
+  .m-rnd { font-size: 17px; }
+  .v-in { color: var(--c-src); font-weight: 700; }
+  .v-fac { color: var(--c-fac); font-weight: 700; }
+  .v-op, .v-eq { color: var(--bd-soft); }
+  .v-res { color: var(--c-res); font-weight: 700; }
+  .m-why { font-size: 13.5px; color: var(--bd-ink); margin: 8px 0 0; max-width: 70ch; }
+  .m-why b { color: var(--c-res); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 10px 0 0; font-size: 11.5px; color: var(--bd-soft); }
+  .legend .k::before { content: "\25A0\00a0"; }
+  .legend .k.src::before { color: var(--c-src); } .legend .k.fac::before { color: var(--c-fac); } .legend .k.res::before { color: var(--c-res); }
+
+  /* practice mode */
+  .p-hidden { background: #16264a; color: var(--c-fac); border-radius: 5px; padding: 0 8px; }
+  .predict { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0 0; }
+  .predict p { margin: 0; font-size: 13.5px; }
+
+  /* dimensional analysis */
+  .dim { margin: 12px 0 0; }
+  .dim summary { cursor: pointer; font-size: 13.5px; color: var(--c-src); min-height: 44px; display: flex; align-items: center; }
+  .dim-body { font-family: var(--mono); font-size: 14px; line-height: 2; overflow-x: auto; padding: 4px 0; }
+  .cancel { text-decoration: line-through; text-decoration-color: var(--c-fac); opacity: .8; }
+  .dim-note { font-family: var(--sans); font-size: 12.5px; color: var(--bd-soft); }
+
+  /* viz 1: one hour, two tracks, one destination */
+  .viz { border-top: 1px solid var(--bd-line); margin-top: 14px; padding-top: 14px; }
+  .viz-cap { font-size: 13.5px; color: var(--bd-ink); margin: 0 0 10px; max-width: 72ch; }
+  .lane { display: grid; grid-template-columns: 92px 1fr auto; gap: 10px; align-items: center; margin: 8px 0; }
+  .lane .who { font-family: var(--mono); font-size: 12px; color: var(--bd-soft); }
+  .track { position: relative; height: 26px; background: #0a1426; border: 1px solid var(--bd-line); border-radius: 6px; overflow: hidden; }
+  .track .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, transparent, rgba(143,224,239,.16)); }
+  .track .plane { position: absolute; top: 50%; left: 0; transform: translate(-2px, -50%); transition: left 1.6s ease-in-out; color: var(--c-src); }
+  .lane.b .track .plane { color: var(--c-res); }
+  .lane .dist { font-family: var(--mono); font-size: 14px; white-space: nowrap; }
+  .lane.a .dist { color: var(--c-src); } .lane.b .dist { color: var(--c-res); }
+  .clockrow { display: flex; align-items: center; gap: 10px; margin: 8px 0 0; color: var(--bd-soft); font-family: var(--mono); font-size: 12px; }
+  .clock .hand { transform-origin: 30px 30px; transition: transform 1.6s ease-in-out; }
+  @media (prefers-reduced-motion: reduce) {
+    .track .plane, .clock .hand { transition: none !important; }
+  }
+
+  /* viz 2: one route, two rulers, and the two unit bars */
+  .route { position: relative; height: 14px; background: #0a1426; border: 1px solid var(--bd-line); border-radius: 4px; margin: 26px 0; }
+  .ruler { position: absolute; left: 0; right: 0; height: 22px; }
+  .ruler.top { bottom: 100%; } .ruler.bot { top: 100%; }
+  .tick { position: absolute; width: 1px; background: var(--bd-soft); height: 10px; }
+  .ruler.top .tick { bottom: 0; background: var(--c-src); } .ruler.bot .tick { top: 0; background: var(--c-res); }
+  .rlabel { position: absolute; font-family: var(--mono); font-size: 11px; white-space: nowrap; }
+  .ruler.top .rlabel { bottom: 12px; color: var(--c-src); } .ruler.bot .rlabel { top: 12px; color: var(--c-res); }
+  .bars { margin: 40px 0 0; }
+  .bar { display: grid; grid-template-columns: 1fr; margin: 6px 0; }
+  .bar .fillb { height: 26px; border-radius: 5px; display: flex; align-items: center; padding: 0 10px; font-family: var(--mono); font-size: 12.5px; color: #08111f; }
+  .bar.nm .fillb { width: 100%; background: var(--c-src); }
+  .bar.sm .fillb { width: 86.897%; background: var(--c-res); }
+  .bardiff { position: relative; height: 20px; font-family: var(--mono); font-size: 11.5px; color: var(--c-fac); }
+  .bardiff span { position: absolute; right: 0; }
+  .sr-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .learn { max-width: 76ch; }
+  .learn p { font-size: 14.5px; color: var(--ink); line-height: 1.65; }
+  @media (max-width: 560px) { .lane { grid-template-columns: 64px 1fr; } .lane .dist { grid-column: 2; text-align: right; } }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap"><a class="brand" href="/">Pilot<span>DECODER</span></a><button id="theme-btn" type="button" aria-label="Switch color theme" title="Color theme"><span class="knob"></span></button></div>
+  </header>
+
+  <header class="masthead">
+    <div class="wrap">
+      <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a><span class="sep" aria-hidden="true">&rarr;</span><span aria-current="page">Knots Decoder</span></nav>
+      <h1 class="eyebrow"><strong>Knots Decoder</strong></h1>
+      <p class="masthead-desc">Knots to miles per hour, nautical miles to statute miles &mdash; reversible converters that show the factor, the arithmetic, and why the numbers land where they do. Built on the exact definitions: 1 NM = 1,852 m, 1 mi = 1,609.344 m.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <div class="sec"><span class="n">01</span><h2>The words, before the math</h2><span class="line" aria-hidden="true"></span></div>
+    <p class="lead">Your METAR reports visibility in statute miles while your airspeed indicator reads knots. These two converters bridge the systems &mdash; and show the arithmetic instead of hiding it.</p>
+    <div class="defs">
+      <div class="def"><b>Knot (kt)</b><p>A speed: 1 nautical mile traveled in 1 hour. Never a distance.</p></div>
+      <div class="def"><b>Nautical mile (NM)</b><p>Exactly 1,852 meters &mdash; close to one minute of latitude, which is why charts and navigation use it.</p></div>
+      <div class="def"><b>Statute mile (mi)</b><p>Exactly 1,609.344 meters (5,280 ft) &mdash; the everyday land mile of road signs and METAR visibility.</p></div>
+      <div class="def"><b>Conversion factor</b><p>1,852 &divide; 1,609.344 = 1.150779448. One number converts both speed and distance, because a knot is just a nautical mile with a clock attached.</p></div>
+    </div>
+
+    <div class="sec"><span class="n">02</span><h2>Knots and miles per hour</h2><span class="line" aria-hidden="true"></span></div>
+    <div class="board" id="board-k">
+      <p class="b-caption">Converter 1 &middot; speed &middot; knots &#8646; miles per hour</p>
+      <div class="fields">
+        <div class="fld src" id="k-fldA">
+          <label for="k-a">Knots <span class="u">(kt)</span></label>
+          <input id="k-a" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+        </div>
+        <button type="button" class="bbtn swap" id="k-swap" aria-label="Swap direction">&#8646; Swap</button>
+        <div class="fld dst" id="k-fldB">
+          <label for="k-b">Miles per hour <span class="u">(mph)</span></label>
+          <input id="k-b" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+        </div>
+      </div>
+      <p class="verr" id="k-err" role="alert"></p>
+      <div class="presets" id="k-presets" role="group" aria-label="Example values"></div>
+      <div class="ctlrow">
+        <button type="button" class="bbtn" id="k-reset">Reset</button>
+        <button type="button" class="bbtn" id="k-copy">Copy result</button>
+        <span class="gap"></span>
+        <label for="k-prec" style="font-size:12.5px;color:var(--bd-soft)">Decimals</label>
+        <select id="k-prec"><option>0</option><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select>
+        <button type="button" class="bbtn" id="k-practice" aria-pressed="false">Practice mode</button>
+      </div>
+      <div class="mathbox">
+        <p class="m-sym" id="k-sym"></p>
+        <p class="m-sub" id="k-sub" aria-hidden="true"></p>
+        <p class="m-rnd" id="k-rnd" aria-hidden="true"></p>
+        <div class="predict" id="k-predict" hidden>
+          <p>Before revealing: will the converted number be&hellip;</p>
+          <button type="button" class="bbtn" data-guess="larger">Larger</button>
+          <button type="button" class="bbtn" data-guess="smaller">Smaller</button>
+        </div>
+        <p class="m-why" id="k-why"></p>
+        <div class="legend" aria-hidden="true"><span class="k src">your value</span><span class="k fac">conversion factor</span><span class="k res">result</span></div>
+        
+      </div>
+      <div class="viz" id="k-viz"><p class="viz-cap"><b>One hour, two ways of counting it.</b> Both aircraft fly the identical speed for exactly one hour and arrive at the identical point &mdash; the numbers differ because the top lane counts the distance in nautical miles and the bottom lane counts the same distance in statute miles. 1 knot means 1 nautical mile traveled in 1 hour &mdash; a knot is a speed, never a distance.</p>
+      <div class="lane a"><span class="who" id="k-lane-a-who">at 100 kt</span><div class="track"><div class="fill"></div><span class="plane" aria-hidden="true">&#9992;</span></div><span class="dist" id="k-dist-a">&ndash;</span></div>
+      <div class="lane b"><span class="who" id="k-lane-b-who">at 115.078 mph</span><div class="track"><div class="fill"></div><span class="plane" aria-hidden="true">&#9992;</span></div><span class="dist" id="k-dist-b">&ndash;</span></div>
+      <div class="clockrow"><svg class="clock" width="60" height="60" viewBox="0 0 60 60" role="img" aria-label="One hour elapses"><circle cx="30" cy="30" r="26" fill="none" stroke="#24365c" stroke-width="2"/><line class="hand" x1="30" y1="30" x2="30" y2="9" stroke="#eec27f" stroke-width="2.5" stroke-linecap="round"/></svg><span>T+0 &rarr; T+60 min &middot; same start, same finish</span></div></div>
+      <span class="sr-live" id="k-live" aria-live="polite"></span>
+    </div>
+
+
+    <div class="sec"><span class="n">03</span><h2>Nautical and statute miles</h2><span class="line" aria-hidden="true"></span></div>
+    <div class="board" id="board-d">
+      <p class="b-caption">Converter 2 &middot; distance &middot; nautical &#8646; statute miles</p>
+      <div class="fields">
+        <div class="fld src" id="d-fldA">
+          <label for="d-a">Nautical miles <span class="u">(NM)</span></label>
+          <input id="d-a" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+        </div>
+        <button type="button" class="bbtn swap" id="d-swap" aria-label="Swap direction">&#8646; Swap</button>
+        <div class="fld dst" id="d-fldB">
+          <label for="d-b">Statute miles <span class="u">(mi)</span></label>
+          <input id="d-b" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+        </div>
+      </div>
+      <p class="verr" id="d-err" role="alert"></p>
+      <div class="presets" id="d-presets" role="group" aria-label="Example values"></div>
+      <div class="ctlrow">
+        <button type="button" class="bbtn" id="d-reset">Reset</button>
+        <button type="button" class="bbtn" id="d-copy">Copy result</button>
+        <span class="gap"></span>
+        <label for="d-prec" style="font-size:12.5px;color:var(--bd-soft)">Decimals</label>
+        <select id="d-prec"><option>0</option><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select>
+        <button type="button" class="bbtn" id="d-practice" aria-pressed="false">Practice mode</button>
+      </div>
+      <div class="mathbox">
+        <p class="m-sym" id="d-sym"></p>
+        <p class="m-sub" id="d-sub" aria-hidden="true"></p>
+        <p class="m-rnd" id="d-rnd" aria-hidden="true"></p>
+        <div class="predict" id="d-predict" hidden>
+          <p>Before revealing: will the converted number be&hellip;</p>
+          <button type="button" class="bbtn" data-guess="larger">Larger</button>
+          <button type="button" class="bbtn" data-guess="smaller">Smaller</button>
+        </div>
+        <p class="m-why" id="d-why"></p>
+        <div class="legend" aria-hidden="true"><span class="k src">your value</span><span class="k fac">conversion factor</span><span class="k res">result</span></div>
+        <details class="dim"><summary>See where the factor comes from</summary>
+          <div class="dim-body">
+            1 <span class="cancel">NM</span> &times; (1,852 <span class="cancel">m</span> / 1 <span class="cancel">NM</span>) &times; (1 mi / 1,609.344 <span class="cancel">m</span>) = <span class="v-fac">1.150779448</span> mi<br>
+            1 <span class="cancel">mi</span> &times; (1,609.344 <span class="cancel">m</span> / 1 <span class="cancel">mi</span>) &times; (1 NM / 1,852 <span class="cancel">m</span>) = <span class="v-fac">0.868976242</span> NM
+          </div>
+          <p class="dim-note">The struck-through units cancel: nautical miles to meters, meters to statute miles. Only the destination unit survives.</p>
+        </details>
+      </div>
+      <div class="viz" id="d-viz"><p class="viz-cap"><b>One route, two rulers.</b> The route below has one physical length. The cyan ruler above it measures in nautical miles; the green ruler below measures in statute miles. Fewer nautical-mile ticks fit &mdash; each one is longer.</p>
+      <div class="route" id="d-route"><div class="ruler top" id="d-ruler-nm"></div><div class="ruler bot" id="d-ruler-sm"></div></div>
+      <div class="bars" aria-label="One nautical mile compared with one statute mile">
+        <div class="bar nm"><div class="fillb">1 nautical mile &middot; 1,852 m</div></div>
+        <div class="bar sm"><div class="fillb">1 statute mile &middot; 1,609.344 m</div></div>
+        <div class="bardiff"><span>&larr; 242.656 m difference</span></div>
+      </div>
+      <p class="viz-cap" style="margin-top:10px">A nautical mile is about 15.08% longer than a statute mile, so the same route has a larger numerical value when measured in statute miles.</p></div>
+      <span class="sr-live" id="d-live" aria-live="polite"></span>
+    </div>
+
+
+    <div class="sec"><span class="n">04</span><h2>Why these units differ</h2><span class="line" aria-hidden="true"></span></div>
+    <div class="learn">
+      <p>The nautical mile is built from the planet: one minute of latitude is very nearly 1,852 meters, so distances in nautical miles convert cleanly to angles on a chart &mdash; which is why aviation and marine navigation, groundspeeds, and winds aloft all use nautical miles and knots. The statute mile is built from land surveying: 5,280 feet, standardized in 1959 as exactly 1,609.344 meters, and it survives in aviation anywhere the ground rules &mdash; most notably METAR visibility.</p>
+      <p>Because both conversions divide the same two meter definitions, one factor serves both: multiply knots by 1.150779448 to get miles per hour, and multiply nautical miles by the same number to get statute miles. Going the other way divides by it (or multiplies by 0.868976242, the same thing).</p>
+    </div>
+
+  </main>
+
+  <footer><div class="wrap"><div class="source"><b>References:</b>
+<ul class="source-list">
+<li>Unit definitions: the international nautical mile is exactly 1,852 m and the international (statute) mile exactly 1,609.344 m &mdash; <a href="https://www.nist.gov/pml/special-publication-811" target="_blank" rel="noopener">NIST Special Publication 811, Guide for the Use of the International System of Units</a>, Appendix B</li>
+<li>The knot as one nautical mile per hour: <a href="https://www.faa.gov/air_traffic/publications/atpubs/pcg_html/glossary-k.html" target="_blank" rel="noopener">FAA Pilot/Controller Glossary</a></li>
+</ul>
+</div>
+<p class="disclaimer"><b>Disclaimer:</b> Educational only. The conversion factor 1.150779448 is 1,852 &divide; 1,609.344 carried at full floating-point precision internally; displayed values are rounded to the selected number of decimals. Not for operational calculations &mdash; the Pilot in Command remains responsible for performance and navigation figures.</p></div><div class="copyright"><div class="wrap"><span>&copy; <span id="yr"></span> PilotDECODER</span><a class="totop" href="#top">BACK TO TOP &uarr;</a></div></div></footer>
+
+<script>
+"use strict";
+/* ============================================================
+   Knots Decoder. One authoritative constant, computed from the
+   exact meter definitions rather than typed in, drives both
+   converters: speed (kt<->mph) and distance (NM<->mi) share it
+   because a knot is one nautical mile per hour.
+   ============================================================ */
+var NM_METERS = 1852;          /* exact, by definition */
+var SM_METERS = 1609.344;      /* exact, by definition */
+var K = NM_METERS / SM_METERS; /* 1.150779448... */
+
+var $ = function (id) { return document.getElementById(id); };
+var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function fmt(v, dp) {
+  return v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: dp });
+}
+function fmtFull(v) {  /* the unrounded line: up to 9 dp, trailing zeros trimmed */
+  var s = v.toLocaleString("en-US", { maximumFractionDigits: 9 });
+  return s;
+}
+
+/* ---------- a reversible converter panel ----------
+   The most recently edited field is the source; only the OTHER field is
+   rewritten, which is what prevents circular updates and cursor jumps. */
+function makeConverter(cfg) {
+  var a = $(cfg.id + "-a"), b = $(cfg.id + "-b"), err = $(cfg.id + "-err");
+  var state = { src: "a", stage: 0, guessArmed: false };
+
+  function parse(el) {
+    var t = el.value.trim().replace(/,/g, "");
+    if (t === "") return { empty: true };
+    if (!/^\d*\.?\d*$/.test(t) || t === ".") return { bad: true };
+    var v = parseFloat(t);
+    if (!isFinite(v)) return { bad: true };
+    return { v: v };
+  }
+  function dp() { return parseInt($(cfg.id + "-prec").value, 10); }
+
+  function compute() {
+    var srcEl = state.src === "a" ? a : b, dstEl = state.src === "a" ? b : a;
+    var p = parse(srcEl);
+    err.textContent = "";
+    if (p.empty) { dstEl.value = ""; render(null); return; }
+    if (p.bad) {
+      err.textContent = srcEl.value.trim().charAt(0) === "-"
+        ? "Negative values do not apply here — enter 0 or more."
+        : "Enter a number, like 120 or 57.5.";
+      render(null); return;
+    }
+    var forward = state.src === "a";               /* a->b multiplies by K */
+    var out = forward ? p.v * K : p.v / K;
+    dstEl.value = fmt(out, Math.max(dp(), 3)).replace(/,/g, "");
+    render({ inV: p.v, outV: out, forward: forward });
+  }
+
+  function colored(inS, opS, facS, outS, eqExtra) {
+    return '<span class="v-in">' + inS + '</span> <span class="v-op">' + opS + '</span> ' +
+      '<span class="v-fac">' + facS + '</span> <span class="v-eq">=</span> ' +
+      '<span class="v-res">' + outS + '</span>' + (eqExtra || "");
+  }
+  function hideBox(label) { return '<span class="p-hidden">' + label + '</span>'; }
+
+  function render(r) {
+    var d = dp();
+    $(cfg.id + "-sym").textContent = cfg.symA + "   ·   " + cfg.symB;
+    var sub = $(cfg.id + "-sub"), rnd = $(cfg.id + "-rnd"), why = $(cfg.id + "-why");
+    var predict = $(cfg.id + "-predict");
+    predict.hidden = true;
+    if (!r) { sub.innerHTML = "—"; rnd.innerHTML = "—"; why.textContent = ""; $(cfg.id + "-live").textContent = ""; cfg.viz(null); return; }
+
+    var uIn = r.forward ? cfg.ua : cfg.ub, uOut = r.forward ? cfg.ub : cfg.ua;
+    var op = r.forward ? "×" : "÷";
+    var facS = "1.150779448 " + cfg.ub + "/" + cfg.ua;
+    var inS = fmt(r.inV, 6) + " " + uIn;
+    var fullS = fmtFull(r.outV) + " " + uOut;
+    var rndS = fmt(r.outV, d) + " " + uOut;
+
+    /* practice-mode fading: 0 all shown; 1 factor hidden; 2 factor+op hidden; 3 result hidden behind a prediction */
+    var st = state.stage;
+    sub.innerHTML = colored(inS, st >= 2 ? hideBox("?") : op, st >= 1 ? hideBox("factor?") : facS,
+      st >= 3 && state.guessArmed ? hideBox("predict below") : fullS);
+    rnd.innerHTML = '<span class="v-in">' + fmt(r.inV, 6) + " " + uIn + '</span> <span class="v-eq">≈</span> ' +
+      (st >= 3 && state.guessArmed ? hideBox("?") : '<span class="v-res">' + rndS + '</span>');
+
+    var growS = "the " + cfg.ub + " number is always the <b>larger</b> one for the same " + cfg.noun +
+      " — a statute mile is shorter, so more of them fit";
+    var shrinkS = "the " + cfg.ua + " number is always the <b>smaller</b> one — each " + cfg.uaLong + " is longer, so fewer are needed";
+    why.innerHTML = r.forward ? "Check: " + growS + "." : "Check: " + shrinkS + ".";
+
+    if (st >= 3 && state.guessArmed) {
+      predict.hidden = false;
+      why.innerHTML = "";
+    }
+
+    $(cfg.id + "-live").textContent = fmt(r.inV, d) + " " + (r.forward ? cfg.uaLong : cfg.ubLong) +
+      " equals " + fmt(r.outV, d) + " " + (r.forward ? cfg.ubLong : cfg.uaLong) + ".";
+    cfg.viz(r);
+    state.lastResult = r;
+  }
+
+  a.addEventListener("input", function () { state.src = "a"; state.guessArmed = state.stage >= 3; compute(); });
+  b.addEventListener("input", function () { state.src = "b"; state.guessArmed = state.stage >= 3; compute(); });
+
+  $(cfg.id + "-swap").addEventListener("click", function () {
+    var av = a.value; a.value = b.value; b.value = av;
+    state.src = state.src === "a" ? "b" : "a";
+    compute();
+    (state.src === "a" ? a : b).focus();
+  });
+  $(cfg.id + "-reset").addEventListener("click", function () {
+    a.value = cfg.initA; b.value = ""; state.src = "a"; state.guessArmed = state.stage >= 3; compute(); a.focus();
+  });
+  $(cfg.id + "-copy").addEventListener("click", function () {
+    var r = state.lastResult; if (!r) return;
+    var d = dp();
+    var text = fmt(r.inV, d) + " " + (r.forward ? cfg.ua : cfg.ub) + " = " + fmt(r.outV, d) + " " + (r.forward ? cfg.ub : cfg.ua);
+    var btn = $(cfg.id + "-copy");
+    function done() { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy result"; }, 1200); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, done);
+    else done();
+  });
+  $(cfg.id + "-prec").addEventListener("change", compute);
+
+  /* practice mode cycles the fading stages */
+  var pbtn = $(cfg.id + "-practice");
+  var STAGES = ["Practice mode", "Practice: factor hidden", "Practice: factor + operation hidden", "Practice: predict the result"];
+  pbtn.addEventListener("click", function () {
+    state.stage = (state.stage + 1) % 4;
+    state.guessArmed = state.stage >= 3;
+    pbtn.textContent = STAGES[state.stage];
+    pbtn.setAttribute("aria-pressed", String(state.stage > 0));
+    compute();
+  });
+  $(cfg.id + "-predict").addEventListener("click", function (e) {
+    var g = e.target && e.target.getAttribute("data-guess");
+    if (!g) return;
+    var r = state.lastResult; if (!r) return;
+    var actuallyLarger = r.outV > r.inV;
+    var right = (g === "larger") === actuallyLarger;
+    state.guessArmed = false;
+    compute();
+    $(cfg.id + "-why").innerHTML = (right ? "Right — " : "Not this time — ") +
+      (actuallyLarger
+        ? "converting to " + cfg.ubLong + " always <b>raises</b> the number: each unit is shorter, so more of them fit."
+        : "converting to " + cfg.uaLong + " always <b>lowers</b> the number: each unit is longer, so fewer are needed.");
+  });
+
+  /* presets */
+  var wrap = $(cfg.id + "-presets");
+  cfg.presets.forEach(function (v) {
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "chipbtn";
+    btn.textContent = fmt(v, 0) + " " + cfg.ua;
+    btn.addEventListener("click", function () { a.value = String(v); state.src = "a"; state.guessArmed = state.stage >= 3; compute(); });
+    wrap.appendChild(btn);
+  });
+
+  a.value = cfg.initA; state.src = "a"; compute();
+  return { compute: compute };
+}
+
+/* ---------- viz 1: one hour, two lanes, one destination ---------- */
+var kAnimTimer = null;
+function kViz(r) {
+  var lanes = document.querySelectorAll("#k-viz .lane");
+  var hand = document.querySelector("#k-viz .clock .hand");
+  if (!r) {
+    $("k-dist-a").textContent = "–"; $("k-dist-b").textContent = "–";
+    return;
+  }
+  var kt = r.forward ? r.inV : r.outV, mph = r.forward ? r.outV : r.inV;
+  $("k-lane-a-who").textContent = "at " + fmt(kt, 3) + " kt";
+  $("k-lane-b-who").textContent = "at " + fmt(mph, 3) + " mph";
+  $("k-dist-a").textContent = fmt(kt, 3) + " NM";
+  $("k-dist-b").textContent = fmt(mph, 3) + " SM";
+  /* both planes traverse the full track: same hour, same physical endpoint */
+  clearTimeout(kAnimTimer);
+  var planes = document.querySelectorAll("#k-viz .plane");
+  var i;
+  for (i = 0; i < planes.length; i++) { planes[i].style.transition = "none"; planes[i].style.left = "0%"; }
+  if (hand) { hand.style.transition = "none"; hand.style.transform = "rotate(0deg)"; }
+  kAnimTimer = setTimeout(function () {
+    for (var j = 0; j < planes.length; j++) {
+      planes[j].style.transition = REDUCED ? "none" : "";
+      planes[j].style.left = "calc(100% - 16px)";
+    }
+    if (hand) { hand.style.transition = REDUCED ? "none" : ""; hand.style.transform = "rotate(360deg)"; }
+  }, 60);
+}
+
+/* ---------- viz 2: one route, two rulers ---------- */
+function dViz(r) {
+  var nmR = $("d-ruler-nm"), smR = $("d-ruler-sm");
+  if (!nmR) return;
+  var nm = !r ? 10 : (r.forward ? r.inV : r.outV);
+  if (!isFinite(nm) || nm <= 0) { nmR.innerHTML = ""; smR.innerHTML = ""; return; }
+  var sm = nm * K;
+  /* pick a tick step (1,2,5 * 10^n) so at most ~24 ticks are drawn */
+  function step(units) {
+    var s = 1;
+    while (units / s > 24) s = (String(s)[0] === "1") ? s * 2 : (String(s)[0] === "2") ? s * 2.5 : s * 2;
+    return s;
+  }
+  var s = step(sm);   /* one shared step keeps the two rulers comparable */
+  function ruler(el, total, unit) {
+    var h = "", n = Math.floor(total / s), i;
+    for (i = 1; i <= n; i++) h += '<span class="tick" style="left:' + (i * s / total * 100) + '%"></span>';
+    h += '<span class="rlabel" style="left:0">0</span>';
+    h += '<span class="rlabel" style="right:0">' + fmt(total, 2) + " " + unit + (s !== 1 ? " · ticks every " + fmt(s, 0) : "") + '</span>';
+    el.innerHTML = h;
+  }
+  ruler(nmR, nm, "NM");
+  ruler(smR, sm, "mi");
+}
+
+makeConverter({ id: "k", ua: "kt", ub: "mph", uaLong: "knots", ubLong: "miles per hour", noun: "speed",
+  symA: "mph = knots × 1.150779448", symB: "knots = mph ÷ 1.150779448",
+  presets: [1, 10, 100, 250, 500], initA: "100", viz: kViz });
+makeConverter({ id: "d", ua: "NM", ub: "mi", uaLong: "nautical miles", ubLong: "statute miles", noun: "distance",
+  symA: "statute miles = NM × 1.150779448", symB: "NM = statute miles ÷ 1.150779448",
+  presets: [1, 10, 100, 500, 1000], initA: "100", viz: dViz });
+</script>
+<script src="../assets/site.js?v=2"></script>
+</body>
+</html>
