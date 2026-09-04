@@ -605,12 +605,15 @@ identifyBtn.addEventListener("click", function () {
 // on desktop choose "Save as PDF" as the destination.
 function stampLines() {
   var t = stampParts(resultAt || new Date());
-  var lines = "Identified: " + t.local + " \u00b7 " + t.zulu;
-  if (photoAt) {
+  var lines;
+  if (photoAt && stampParts(photoAt).iso !== t.iso) {
     var pt = stampParts(photoAt);
-    lines = "Photo taken: " + pt.local + " \u00b7 " + pt.zulu + " (" + photoAtSrc + ")\n" + lines;
+    lines = "Photo taken: " + pt.local + " \u00b7 " + pt.zulu + " (" + photoAtSrc + ")\n" +
+            "Identified: " + t.local + " \u00b7 " + t.zulu;
+  } else {
+    lines = "Snapped and identified: " + t.local + " \u00b7 " + t.zulu;
   }
-  return { text: lines, iso: stampParts(resultAt || new Date()).iso };
+  return { text: lines, iso: t.iso };
 }
 
 function downloadPdf() {
@@ -644,6 +647,12 @@ function downloadPdf() {
    and the identification as text — pick Mail and it becomes the message. Where
    file sharing is unavailable, falls back to a mailto: draft (no attachment;
    the Download PDF button still carries the photo). Subject carries date+time. */
+function subjectLine() {
+  var st = stampLines();
+  var t = stampParts(resultAt || new Date());
+  return "Cloud Decoder \u2014 " + st.iso.replace("_T", " ").replace(/(\d\d)(\d\d)$/, "$1:$2") +
+    " \u00b7 " + t.zulu.split(" ")[0] + " \u00b7 " + typeSlug();
+}
 function summaryText() {
   var names = lastTypes && lastTypes.length
     ? lastTypes.map(function (t) {
@@ -652,16 +661,16 @@ function summaryText() {
       }).join(", ")
     : "No cloud types identified (clear sky or none recognized)";
   var st = stampLines();
-  return "Cloud Decoder report\n" + st.text + "\nResult: " + names +
-    "\nPhoto: " + (selectedFileName || "sky photo") +
+  var keepName = selectedFileName && selectedFileName.toLowerCase() !== "image.jpg" &&
+    selectedFileName.toLowerCase() !== "image.jpeg";
+  return subjectLine() + "\n\n" + st.text + "\nResult: " + names +
+    (keepName ? "\nPhoto: " + selectedFileName : "") +
     "\n\npilotdecoder.com/cloud-decoder \u00b7 Educational only.";
 }
 function emailReport() {
   if (lastTypes === null) return;
   var st = stampLines();
-  var t = stampParts(resultAt || new Date());
-  var subject = "Cloud Decoder \u2014 " + st.iso.replace("_T", " ").replace(/(\d\d)(\d\d)$/, "$1:$2") +
-    " \u00b7 " + t.zulu.split(" ")[0] + " \u00b7 " + typeSlug();
+  var subject = subjectLine();
   var body = summaryText();
   var shared = false;
   try {
