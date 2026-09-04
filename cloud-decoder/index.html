@@ -319,6 +319,22 @@ function reasoningHtml(r, forPrint) {
   }
   return '<details class="why-panel"><summary>How this was identified</summary><div class="why-body">' + body + "</div></details>";
 }
+/* the same reasoning rows as plain text, for the email body */
+function reasoningText(r) {
+  if (!r) return "";
+  var rows = [
+    ["Perceived altitude", r.perceivedAltitude],
+    ["Texture / structure", Object.prototype.toString.call(r.texture) === "[object Array]" ? r.texture.join(", ") : r.texture],
+    ["Opacity & shading", r.opacityShading],
+    ["Notes", r.notes]
+  ];
+  var out = "";
+  for (var i = 0; i < rows.length; i++) {
+    if (!rows[i][1]) continue;
+    out += "\n\u2022 " + rows[i][0] + ": " + rows[i][1];
+  }
+  return out ? "\n\nHow this was identified:" + out : "";
+}
 function confPillHtml(level) {
   var L = { high: ["conf-high", 3, "high confidence"], medium: ["conf-med", 2, "medium confidence"], low: ["conf-low", 1, "low confidence"] }[level];
   if (!L) return "";
@@ -665,6 +681,7 @@ function summaryText() {
     selectedFileName.toLowerCase() !== "image.jpeg";
   return subjectLine() + "\n\n" + st.text + "\nResult: " + names +
     (keepName ? "\nPhoto: " + selectedFileName : "") +
+    reasoningText(lastReasoning) +
     "\n\npilotdecoder.com/cloud-decoder \u00b7 Educational only.";
 }
 function emailReport() {
